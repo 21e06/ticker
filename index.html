@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta http-equiv="cache-control" content="no-store">
+	<title>BTC Ticker</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<link rel="icon" type="image/png" href="https://bitcoin.org/favicon.png">
+	<style>
+	html, body {
+		background: #222;
+		color: #fff;
+		font-family: arial;
+		margin: 5px;
+		padding: 0;
+		width: 100%;
+		user-select: none;
+	}
+
+	html { overflow: hidden; }
+
+	.container {
+		width: 100%;
+		border: 1px solid transparent;
+	}
+
+	.usd, .php {
+		font-size: 3em;
+		text-align: center;
+		margin: 1em 0;
+	}
+
+	.usd {
+		font-size: 2em;
+		color: #888;
+	}
+
+	.offer {
+		font-size: 3em;
+		text-align: center;
+	}
+	.bid {
+		display: inline-block;
+		padding: 0 10px 0 0;
+	}
+
+	.ask {
+		display: inline-block;
+	}
+
+	.label {
+		color: #888;
+	}
+
+	.price {
+		font-weight: bold;
+	}
+	</style>
+</head>
+<body>
+	<div class="container">
+		<div class="usd">...</div>
+		<div class="php">...</div>
+
+		<div class="offer">
+			<div class="bid">
+				<div class="label">bid</div>
+				<div class="price">...</div>
+			</div>
+
+			<div class="ask">
+				<div class="label">ask</div>
+				<div class="price">...</div>
+			</div>
+		</div>
+	</div>
+	<script>
+	const peso = new Intl.NumberFormat('en-ph', {style:'currency', currency:'php'}),
+			dollar = new Intl.NumberFormat('en-ph', {style:'currency', currency:'usd'});
+
+	const usd = document.querySelector('.usd'),
+				php = document.querySelector('.php');
+
+	const	bid = document.querySelector('.bid .price'),
+				ask = document.querySelector('.ask .price');
+
+	window.onload = offer();
+
+	function offer() {
+		fetch('https://ln.bohol.xyz/rates')
+			.then(r => r.json())
+			.then(d => {
+				const x = d.rates;
+
+				usd.textContent = dollar.format(x.USD);
+				php.textContent = peso.format(x.PHP);
+				bid.textContent = peso.format(x.bid);
+				ask.textContent = peso.format(x.ask);		
+			})
+	}
+	</script>
+</body>
+</html>
