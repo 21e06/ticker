@@ -81,6 +81,13 @@
 			font-size: 2.5em;
 		}
 	}
+
+	.ts {
+    text-align: center;
+    color: #444;
+    margin: 3em 0 0 0;
+    font-size: 1em;
+	}
 	</style>
 </head>
 <body>
@@ -99,6 +106,8 @@
 				<div class="price">...</div>
 			</div>
 		</div>
+
+		<div class="ts"></div>
 	</div>
 	<script>
 	const peso = new Intl.NumberFormat('en-ph', {style:'currency', currency:'php'}),
@@ -116,7 +125,7 @@
 		fetch('https://api.ligrev.pw/ticker')
 			.then(r => r.json())
 			.then(d => {
-				const x = d.rates;
+				const x = d.rates; lastupdate();
 
 				usd.textContent = dollar.format(x.USD);
 				php.textContent = peso.format(x.PHP);
@@ -124,6 +133,20 @@
 				ask.textContent = peso.format(x.ask);
 				setTimeout(offer, 30000);
 			})
+	}
+
+	const oras = new Intl.DateTimeFormat('en-ph', {
+		year: 'numeric',
+		month: 'numeric',
+		day: 'numeric',
+		hour: 'numeric',
+		minute: 'numeric',
+		second: 'numeric',
+		timeZone: 'Asia/Manila'
+	});
+
+	function lastupdate() {
+		document.querySelector('.ts').textContent = oras.format(Date.now());
 	}
 	</script>
 </body>
