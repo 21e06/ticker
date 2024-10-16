@@ -67,18 +67,18 @@
 
 	@media (max-width: 800px) {
 		.offer {
-			font-size: 2em;
+			font-size: 2.5em;
 		}
 	}
 
-	@media (max-width: 500px) {
+	@media (max-width: 600px) {
 		.bid,.ask {
 			display: block;
 			padding: 0;
 		}
 
 		.php {
-			font-size: 2em;
+			font-size: 2.5em;
 		}
 	}
 	</style>
@@ -121,7 +121,8 @@
 				usd.textContent = dollar.format(x.USD);
 				php.textContent = peso.format(x.PHP);
 				bid.textContent = peso.format(x.bid);
-				ask.textContent = peso.format(x.ask);		
+				ask.textContent = peso.format(x.ask);
+				setTimeout(offer, 30000);
 			})
 	}
 	</script>
