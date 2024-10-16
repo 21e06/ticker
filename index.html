@@ -87,7 +87,7 @@
 	window.onload = offer();
 
 	function offer() {
-		fetch('https://ln.bohol.xyz/rates')
+		fetch('https://api.ligrev.pw/ticker')
 			.then(r => r.json())
 			.then(d => {
 				const x = d.rates;
