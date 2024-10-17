@@ -37,7 +37,7 @@
 
 	.usd {
 		font-size: 2em;
-		color: #888;
+		color: #444;
 	}
 
 	.offer {
@@ -58,7 +58,7 @@
 	}
 
 	.label {
-		color: #888;
+		color: #555;
 	}
 
 	.price {
@@ -127,10 +127,13 @@
 			.then(d => {
 				const x = d.rates; lastupdate();
 
+				document.title = dollar.format(x.USD);
+
 				usd.textContent = dollar.format(x.USD);
 				php.textContent = peso.format(x.PHP);
 				bid.textContent = peso.format(x.bid);
 				ask.textContent = peso.format(x.ask);
+
 				setTimeout(offer, 30000);
 			})
 	}
