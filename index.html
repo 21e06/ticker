@@ -122,7 +122,7 @@
 	window.onload = offer();
 
 	function offer() {
-		fetch('https://api.ligrev.pw/ticker')
+		fetch('https://api.bisdak.pw/ticker')
 			.then(r => r.json())
 			.then(d => {
 				const x = d.rates; lastupdate();
