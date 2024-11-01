@@ -11,7 +11,7 @@
 		background: #fff;
 		color: #000;
 		font-family: arial;
-		margin: 5px;
+		margin: 0;
 		padding: 0;
 		width: 100%;
 		user-select: none;
@@ -25,15 +25,21 @@
 
 	img {
 		width: 350px;
-		display: block;
+		display: flex;
 		margin: auto;
+	}
+
+	@media (max-width:375px) {
+		img {
+			width: 100%;
+		}
 	}
 	</style>
 </head>
 <body>
 	<div class="container">
-		<img src="https://image.nostr.build/32b5b281d14a197e5b12b9d7e3dc97c5cbb96190c23655f1615c0c303334dfce.png" />
-		<img src="https://api.bisdak.pw/qr/00020101021127590012com.p2pqrpay0111BNORPHMMXXX02089996440304120117001163615204601653036085802PH5906bisdak6011Makati City6304C185" />
+		<img src="https://image.nostr.build/d9e2b95ff4f11da502843877f0a0f3039521f0662b504aa5d1b797a2134f2575.png"/>
+		<img src="https://api.bisdak.pw/qr/00020101021127590012com.p2pqrpay0111BNORPHMMXXX02089996440304120117001163615204601653036085802PH5906bisdak6011Makati City6304C185"/>
 	</div>
 </body>
 </html>
