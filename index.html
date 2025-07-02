@@ -30,30 +30,63 @@
 		margin: 1em 0;
 	}
 
+	.php {
+		color: #888;
+		font-weight: 800;
+	}
+
 	.usd {
 		font-size: 2em;
-		color: #888;
+		color: #444;
 	}
 
 	.offer {
 		font-size: 3em;
 		text-align: center;
 	}
-	.bid {
+
+	.bid, .ask {
 		display: inline-block;
-		padding: 0 10px 0 0;
+	}
+
+	.bid {
+		padding: 0 1em 0 0;
 	}
 
 	.ask {
-		display: inline-block;
+		padding: 0 0 0 1em;
 	}
 
 	.label {
-		color: #888;
+		color: #555;
 	}
 
 	.price {
-		font-weight: bold;
+		font-weight: 800;
+	}
+
+	@media (max-width: 800px) {
+		.offer {
+			font-size: 2.5em;
+		}
+	}
+
+	@media (max-width: 600px) {
+		.bid,.ask {
+			display: block;
+			padding: 0;
+		}
+
+		.php {
+			font-size: 2.5em;
+		}
+	}
+
+	.ts {
+    text-align: center;
+    color: #444;
+    margin: 3em 0 0 0;
+    font-size: 1em;
 	}
 	</style>
 </head>
@@ -73,6 +106,8 @@
 				<div class="price">...</div>
 			</div>
 		</div>
+
+		<div class="ts"></div>
 	</div>
 	<script>
 	const peso = new Intl.NumberFormat('en-ph', {style:'currency', currency:'php'}),
@@ -87,16 +122,34 @@
 	window.onload = offer();
 
 	function offer() {
-		fetch('https://ln.bohol.xyz/rates')
+		fetch('https://fx.bisdak.pw')
 			.then(r => r.json())
 			.then(d => {
-				const x = d.rates;
+				const x = d.rates; lastupdate();
+
+				document.title = dollar.format(x.USD);
 
 				usd.textContent = dollar.format(x.USD);
 				php.textContent = peso.format(x.PHP);
 				bid.textContent = peso.format(x.bid);
-				ask.textContent = peso.format(x.ask);		
+				ask.textContent = peso.format(x.ask);
+
+				setTimeout(offer, 30000);
 			})
+	}
+
+	const oras = new Intl.DateTimeFormat('en-ph', {
+		year: 'numeric',
+		month: 'numeric',
+		day: 'numeric',
+		hour: 'numeric',
+		minute: 'numeric',
+		second: 'numeric',
+		timeZone: 'Asia/Manila'
+	});
+
+	function lastupdate() {
+		document.querySelector('.ts').textContent = oras.format(Date.now());
 	}
 	</script>
 </body>
