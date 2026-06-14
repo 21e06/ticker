@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0a0a">
+  <title>BTC · 5-Min Direction</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:       #0a0a0a;
+      --surface:  #111111;
+      --border:   #1e1e1e;
+      --muted:    #3a3a3a;
+      --dim:      #888;
+      --label:    #aaa;
+      --body:     #e8e8e8;
+      --bright:   #f5f5f5;
+      --up:       #00e5a0;
+      --down:     #ff4560;
+      --neutral:  #f5a623;
+      --accent:   #f7931a;
+      --mono:     'DM Mono', monospace;
+      --display:  'Syne', sans-serif;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--body);
+      font-family: var(--mono);
+      -webkit-font-smoothing: antialiased;
+    }
+    #app {
+      display: flex;
+      flex-direction: column;
+      min-height: 100%;
+      padding: calc(var(--safe-top) + 16px) 20px calc(var(--safe-bot) + 16px);
+      max-width: 480px;
+      margin: 0 auto;
+      gap: 16px;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .wordmark {
+      font-family: var(--display);
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: var(--bright);
+    }
+    .wordmark span { color: var(--accent); }
+
+    .countdown {
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .countdown b { color: var(--label); font-weight: 500; }
+
+    /* ── aggregate badge ──────────────────────────────── */
+    .agg {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 20px;
+      text-align: center;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    .agg-label {
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--dim);
+      margin-bottom: 10px;
+    }
+    .agg-dir {
+      font-family: var(--display);
+      font-size: clamp(40px, 14vw, 64px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+    }
+    .agg-dir.up   { color: var(--up); }
+    .agg-dir.down { color: var(--down); }
+    .agg-dir.flat { color: var(--neutral); }
+
+    .agg-sub {
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--label);
+    }
+    .agg.up   { border-color: rgba(0,229,160,0.3);  background: rgba(0,229,160,0.06); }
+    .agg.down { border-color: rgba(255,69,96,0.3);  background: rgba(255,69,96,0.06); }
+    .agg.flat { border-color: rgba(245,166,35,0.3); background: rgba(245,166,35,0.06); }
+
+    /* ── average price card ──────────────────────────── */
+    .avg {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .avg-cell {
+      background: var(--surface);
+      padding: 14px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .avg-label {
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--dim);
+    }
+    .avg-value {
+      font-family: var(--display);
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--bright);
+    }
+    .avg-value.skel { color: transparent; background: var(--border); border-radius: 4px; }
+
+    /* ── source list ──────────────────────────────────── */
+    .sources {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      background: var(--border);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .source-row {
+      background: var(--surface);
+      padding: 12px 16px;
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+    }
+    .src-name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--body);
+      font-weight: 500;
+    }
+    .src-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background 0.4s;
+    }
+    .src-dot.live  { background: var(--up); }
+    .src-dot.error { background: var(--down); }
+
+    .src-price {
+      color: var(--label);
+      text-align: right;
+      min-width: 92px;
+    }
+    .src-price.skel { color: transparent; background: var(--border); border-radius: 4px; }
+
+    .src-diff {
+      text-align: right;
+      min-width: 76px;
+      font-size: 12px;
+    }
+    .src-diff.up   { color: var(--up); }
+    .src-diff.down { color: var(--down); }
+    .src-diff.flat { color: var(--dim); }
+
+    .src-dir {
+      font-size: 14px;
+      font-weight: 500;
+      text-align: right;
+      min-width: 28px;
+    }
+    .src-dir.up   { color: var(--up); }
+    .src-dir.down { color: var(--down); }
+    .src-dir.flat { color: var(--dim); }
+
+    footer {
+      margin-top: auto;
+      padding-top: 12px;
+      font-size: 10px;
+      color: var(--muted);
+      text-align: center;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="wordmark">BTC<span>/</span>5M</div>
+    <div class="countdown">next flip in <b id="countdown">--:--</b></div>
+  </header>
+
+  <div class="agg flat" id="agg">
+    <div class="agg-label">Aggregated 5-Min Direction</div>
+    <div class="agg-dir flat" id="aggDir">—</div>
+    <div class="agg-sub" id="aggSub">waiting for data···</div>
+  </div>
+
+  <div class="avg">
+    <div class="avg-cell">
+      <div class="avg-label">Avg Price (USD)</div>
+      <div class="avg-value skel" id="avgUsd">––––</div>
+    </div>
+    <div class="avg-cell">
+      <div class="avg-label">BTC/PHP</div>
+      <div class="avg-value skel" id="avgPhp">––––</div>
+    </div>
+  </div>
+
+  <div class="sources" id="sources"></div>
+
+  <footer>Direction = current price vs. price at start of current 5-min window</footer>
+</div>
+
+<script>
+'use strict';
+
+const WINDOW_MS = 5 * 60 * 1000;
+
+// ── sources config ───────────────────────────────────
+// Each source: connect to a public ws feed and call update(price) on every tick.
+const sources = [
+  {
+    id: 'hyperliquid', name: 'Hyperliquid',
+    url: 'wss://api-ui.hyperliquid.xyz/ws',
+    onOpen: ws => ws.send(JSON.stringify({ method: 'subscribe', subscription: { type: 'activeAssetCtx', coin: 'BTC' } })),
+    onMessage: (msg, update) => {
+      if (msg.channel === 'activeAssetCtx' && msg.data && msg.data.coin === 'BTC') {
+        update(parseFloat(msg.data.ctx.markPx));
+      }
+    },
+    ping: ws => ws.send(JSON.stringify({ method: 'ping' })),
+    // open price of the current 5-min candle (clock-aligned)
+    restOpen: async windowStart => {
+      const res = await fetch('https://api.hyperliquid.xyz/info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'candleSnapshot', req: { coin: 'BTC', interval: '5m', startTime: windowStart, endTime: Date.now() } }),
+      });
+      const data = await res.json();
+      return parseFloat(data[0].o);
+    },
+  },
+  {
+    id: 'okx', name: 'OKX',
+    url: 'wss://ws.okx.com:8443/ws/v5/public',
+    onOpen: ws => ws.send(JSON.stringify({ op: 'subscribe', args: [{ channel: 'tickers', instId: 'BTC-USDT' }] })),
+    onMessage: (msg, update) => {
+      if (msg.arg && msg.arg.channel === 'tickers' && Array.isArray(msg.data)) {
+        update(parseFloat(msg.data[0].last));
+      }
+    },
+    restOpen: async () => {
+      const res = await fetch('https://www.okx.com/api/v5/market/candles?instId=BTC-USDT&bar=5m&limit=1');
+      const j = await res.json();
+      return parseFloat(j.data[0][1]);
+    },
+  },
+  {
+    id: 'coinbase', name: 'Coinbase',
+    url: 'wss://advanced-trade-ws.coinbase.com',
+    onOpen: ws => ws.send(JSON.stringify({ type: 'subscribe', channel: 'ticker', product_ids: ['BTC-USD'] })),
+    onMessage: (msg, update) => {
+      if (msg.channel === 'ticker' && Array.isArray(msg.events)) {
+        msg.events.forEach(ev => (ev.tickers || []).forEach(t => update(parseFloat(t.price))));
+      }
+    },
+    restOpen: async () => {
+      const res = await fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=300&limit=1');
+      const j = await res.json();
+      return parseFloat(j[0][3]); // [time, low, high, open, close, volume]
+    },
+  },
+  {
+    id: 'binance', name: 'Binance Spot',
+    url: 'wss://data-stream.binance.vision:9443/ws',
+    onOpen: ws => ws.send(JSON.stringify({ method: 'SUBSCRIBE', params: ['btcusdt@aggTrade'], id: 1 })),
+    onMessage: (msg, update) => {
+      if (msg.e === 'aggTrade') update(parseFloat(msg.p));
+    },
+    restOpen: async () => {
+      const res = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=1');
+      const j = await res.json();
+      return parseFloat(j[0][1]); // [openTime, open, high, low, close, ...]
+    },
+  },
+  {
+    id: 'binance-futures', name: 'Binance Futures',
+    url: 'wss://fstream.binance.com/market/stream',
+    onOpen: ws => ws.send(JSON.stringify({ method: 'SUBSCRIBE', params: ['btcusdt@markPrice'], id: 1 })),
+    onMessage: (msg, update) => {
+      if (msg.stream === 'btcusdt@markPrice' && msg.data) {
+        update(parseFloat(msg.data.p));
+      }
+    },
+    restOpen: async () => {
+      const res = await fetch('https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=5m&limit=1');
+      const j = await res.json();
+      return parseFloat(j[0][1]); // [openTime, open, high, low, close, ...]
+    },
+  },
+  {
+    id: 'bybit', name: 'Bybit',
+    url: 'wss://stream.bybit.com/v5/public/linear',
+    onOpen: ws => ws.send(JSON.stringify({ op: 'subscribe', args: ['publicTrade.BTCUSDT'] })),
+    onMessage: (msg, update) => {
+      if (msg.topic === 'publicTrade.BTCUSDT' && Array.isArray(msg.data)) {
+        update(parseFloat(msg.data[msg.data.length - 1].p));
+      }
+    },
+    ping: ws => ws.send(JSON.stringify({ op: 'ping' })),
+    restOpen: async () => {
+      const res = await fetch('https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=5&limit=1');
+      const j = await res.json();
+      return parseFloat(j.result.list[0][1]); // [start, open, high, low, close, volume, turnover]
+    },
+  },
+];
+
+// ── state ────────────────────────────────────────────
+const state = {};
+sources.forEach(s => state[s.id] = { price: null, baseline: null, live: false });
+let windowStart = Math.floor(Date.now() / WINDOW_MS) * WINDOW_MS;
+
+// ── DOM ──────────────────────────────────────────────
+const sourcesEl  = document.getElementById('sources');
+const aggEl      = document.getElementById('agg');
+const aggDirEl   = document.getElementById('aggDir');
+const aggSubEl   = document.getElementById('aggSub');
+const countdownEl= document.getElementById('countdown');
+const avgUsdEl   = document.getElementById('avgUsd');
+const avgPhpEl   = document.getElementById('avgPhp');
+
+// ── USD/PHP exchange rate ────────────────────────────
+let usdPhpRate = null;
+function fetchFxRate() {
+  fetch('https://open.er-api.com/v6/latest/USD')
+    .then(res => res.json())
+    .then(j => { if (j && j.rates && j.rates.PHP) usdPhpRate = j.rates.PHP; })
+    .catch(() => {});
+}
+fetchFxRate();
+setInterval(fetchFxRate, 30 * 60 * 1000);
+
+const fmt = n => new Intl.NumberFormat('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+
+// fetch the clock-aligned open price for the current 5-min window
+sources.forEach(s => {
+  if (!s.restOpen) return;
+  s.restOpen(windowStart).then(open => {
+    if (isFinite(open)) state[s.id].baseline = open;
+  }).catch(() => {});
+});
+
+sources.forEach(s => {
+  const row = document.createElement('div');
+  row.className = 'source-row';
+  row.innerHTML = `
+    <div class="src-name"><span class="src-dot" id="dot-${s.id}"></span>${s.name}</div>
+    <div class="src-price skel" id="price-${s.id}">––––</div>
+    <div class="src-diff flat" id="diff-${s.id}">·</div>
+    <div class="src-dir flat" id="dir-${s.id}">·</div>
+  `;
+  sourcesEl.appendChild(row);
+});
+
+// ── connection ───────────────────────────────────────
+function connect(src) {
+  const ws = new WebSocket(src.url);
+  const dot = document.getElementById('dot-' + src.id);
+
+  ws.onopen = () => {
+    dot.className = 'src-dot live';
+    state[src.id].live = true;
+    src.onOpen(ws);
+  };
+
+  ws.onmessage = ({ data }) => {
+    let msg;
+    try { msg = JSON.parse(data); } catch { return; }
+    src.onMessage(msg, px => {
+      if (!isFinite(px)) return;
+      const st = state[src.id];
+      st.price = px;
+      if (st.baseline === null) st.baseline = px;
+    });
+  };
+
+  ws.onerror = () => { dot.className = 'src-dot error'; };
+  ws.onclose = () => {
+    dot.className = 'src-dot error';
+    state[src.id].live = false;
+    setTimeout(() => connect(src), 3000);
+  };
+
+  if (src.ping) {
+    setInterval(() => {
+      if (ws.readyState === WebSocket.OPEN) src.ping(ws);
+    }, 25000);
+  }
+}
+
+sources.forEach(connect);
+
+// ── render loop ──────────────────────────────────────
+function render() {
+  const now = Date.now();
+  const newWindowStart = Math.floor(now / WINDOW_MS) * WINDOW_MS;
+
+  // roll over to a new 5-min window: reset baselines to current prices
+  if (newWindowStart !== windowStart) {
+    windowStart = newWindowStart;
+    sources.forEach(s => {
+      const st = state[s.id];
+      if (st.price !== null) st.baseline = st.price;
+    });
+  }
+
+  let up = 0, down = 0, flat = 0, active = 0;
+
+  sources.forEach(s => {
+    const st = state[s.id];
+    const priceEl = document.getElementById('price-' + s.id);
+    const diffEl  = document.getElementById('diff-' + s.id);
+    const dirEl   = document.getElementById('dir-' + s.id);
+
+    if (st.price === null) {
+      priceEl.classList.add('skel');
+      return;
+    }
+    priceEl.classList.remove('skel');
+    priceEl.textContent = '$' + fmt(st.price);
+
+    let dir = 'flat';
+    if (st.baseline !== null) {
+      const diff = st.price - st.baseline;
+      if (diff > 0) dir = 'up';
+      else if (diff < 0) dir = 'down';
+      active++;
+      if (dir === 'up') up++; else if (dir === 'down') down++; else flat++;
+
+      const sign = diff > 0 ? '+' : diff < 0 ? '−' : '';
+      diffEl.className = 'src-diff ' + dir;
+      diffEl.textContent = sign + fmt(Math.abs(diff));
+    } else {
+      diffEl.className = 'src-diff flat';
+      diffEl.textContent = '·';
+    }
+    dirEl.className = 'src-dir ' + dir;
+    dirEl.textContent = dir === 'up' ? '▲' : dir === 'down' ? '▼' : '·';
+  });
+
+  // average price across all sources + BTC/PHP conversion
+  const prices = sources.map(s => state[s.id].price).filter(p => p !== null);
+  if (prices.length) {
+    const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
+    avgUsdEl.classList.remove('skel');
+    avgUsdEl.textContent = '$' + fmt(avg);
+    if (usdPhpRate !== null) {
+      avgPhpEl.classList.remove('skel');
+      avgPhpEl.textContent = '₱' + fmt(avg * usdPhpRate);
+    }
+  }
+
+  // aggregate
+  let aggClass = 'flat', aggText = '—';
+  if (active > 0) {
+    if (up > down) { aggClass = 'up';   aggText = 'UP';   }
+    else if (down > up) { aggClass = 'down'; aggText = 'DOWN'; }
+    else { aggClass = 'flat'; aggText = 'FLAT'; }
+  }
+  aggEl.className = 'agg ' + aggClass;
+  aggDirEl.className = 'agg-dir ' + aggClass;
+  aggDirEl.textContent = aggText;
+  aggSubEl.textContent = active > 0
+    ? `${up} up · ${down} down · ${flat} flat  (of ${active} sources)`
+    : 'waiting for data···';
+
+  // countdown to next window
+  const remaining = WINDOW_MS - (now - windowStart);
+  const mins = Math.floor(remaining / 60000);
+  const secs = Math.floor((remaining % 60000) / 1000);
+  countdownEl.textContent = `${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}`;
+}
+
+setInterval(render, 1000);
+render();
+</script>
+</body>
+</html>
