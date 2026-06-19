@@ -1,25 +1,44 @@
 {
-  "name": "BTC/USDC Ticker",
-  "short_name": "BTC",
-  "description": "Live Bitcoin price ticker via Hyperliquid",
+  "name": "BTC · 5-Min Direction",
+  "short_name": "BTC/5M",
+  "description": "Real-time Bitcoin 5-minute price direction aggregated across multiple exchanges.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait",
+  "orientation": "portrait-primary",
   "background_color": "#0a0a0a",
   "theme_color": "#0a0a0a",
+  "categories": ["finance", "utilities"],
   "icons": [
+    {
+      "src": "icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
-  ],
-  "categories": ["finance", "utilities"]
+  ]
 }

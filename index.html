@@ -4,7 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <meta name="theme-color" content="#0a0a0a">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BTC/5M">
+  <meta name="description" content="Real-time Bitcoin 5-minute price direction aggregated across multiple exchanges.">
   <title>BTC · 5-Min Direction</title>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/icons/icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@700;800&display=swap" rel="stylesheet">
   <style>
@@ -33,15 +40,42 @@
       color: var(--body);
       font-family: var(--mono);
       -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
     }
     #app {
       display: flex;
       flex-direction: column;
       min-height: 100%;
+      min-height: 100dvh;
       padding: calc(var(--safe-top) + 16px) 20px calc(var(--safe-bot) + 16px);
-      max-width: 480px;
+      max-width: 540px;
       margin: 0 auto;
       gap: 16px;
+    }
+
+    /* ── responsive ───────────────────────────────────── */
+    @media (max-width: 360px) {
+      #app { padding-left: 14px; padding-right: 14px; gap: 12px; }
+      .agg { padding: 20px 14px; }
+    }
+
+    @media (min-width: 600px) {
+      #app { padding-top: calc(var(--safe-top) + 24px); padding-bottom: calc(var(--safe-bot) + 24px); gap: 20px; }
+      .agg { padding: 36px 28px; }
+      .source-row { padding: 14px 20px; font-size: 14px; }
+    }
+
+    @media (min-width: 840px) {
+      body { display: grid; place-items: start center; }
+      #app { padding-top: 40px; }
+      .sources { display: grid; grid-template-columns: 1fr 1fr; }
+    }
+
+    /* standalone PWA — nudge content below status bar */
+    @media (display-mode: standalone) {
+      header { padding-top: 4px; }
     }
     header {
       display: flex;
@@ -132,6 +166,29 @@
     }
     .avg-value.skel { color: transparent; background: var(--border); border-radius: 4px; }
 
+    .avg-value-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .avg-diff {
+      display: none;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 3px 7px;
+      border-radius: 999px;
+      line-height: 1;
+      animation: bubble 1.8s ease-in-out infinite;
+    }
+    .avg-diff.up   { color: var(--up);   background: rgba(0,229,160,0.12); }
+    .avg-diff.down { color: var(--down); background: rgba(255,69,96,0.12); }
+    .avg-diff.flat { color: var(--dim);  background: rgba(255,255,255,0.05); animation: none; }
+
+    @keyframes bubble {
+      0%, 100% { transform: scale(1);    opacity: 0.45; }
+      50%      { transform: scale(1.08); opacity: 1; }
+    }
+
     /* ── source list ──────────────────────────────────── */
     .sources {
       display: flex;
@@ -146,7 +203,7 @@
       background: var(--surface);
       padding: 12px 16px;
       display: grid;
-      grid-template-columns: 1fr auto auto auto;
+      grid-template-columns: minmax(0, 1fr) auto auto auto;
       align-items: center;
       gap: 12px;
       font-size: 13px;
@@ -157,6 +214,13 @@
       gap: 8px;
       color: var(--body);
       font-weight: 500;
+      min-width: 0;
+      overflow: hidden;
+    }
+    .src-name-text {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     .src-dot {
       width: 6px; height: 6px;
@@ -221,7 +285,10 @@
   <div class="avg">
     <div class="avg-cell">
       <div class="avg-label">Avg Price (USD)</div>
-      <div class="avg-value skel" id="avgUsd">––––</div>
+      <div class="avg-value-row">
+        <div class="avg-value skel" id="avgUsd">––––</div>
+        <div class="avg-diff flat" id="avgDiff">·</div>
+      </div>
     </div>
     <div class="avg-cell">
       <div class="avg-label">BTC/PHP</div>
@@ -243,6 +310,65 @@ const WINDOW_MS = 5 * 60 * 1000;
 // Each source: connect to a public ws feed and call update(price) on every tick.
 const sources = [
   {
+    id: 'binance-futures', name: 'Binance Futures',
+    url: 'wss://fstream.binance.com/market/stream',
+    onOpen: ws => ws.send(JSON.stringify({ method: 'SUBSCRIBE', params: ['btcusdt@markPrice'], id: 1 })),
+    onMessage: (msg, update) => {
+      if (msg.stream === 'btcusdt@markPrice' && msg.data) {
+        update(parseFloat(msg.data.p));
+      }
+    },
+    restOpen: async () => {
+      const res = await fetch('https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=5m&limit=1');
+      const j = await res.json();
+      return parseFloat(j[0][1]); // [openTime, open, high, low, close, ...]
+    },
+  },
+  {
+    id: 'binance', name: 'Binance Spot',
+    url: 'wss://data-stream.binance.vision:9443/ws',
+    onOpen: ws => ws.send(JSON.stringify({ method: 'SUBSCRIBE', params: ['btcusdt@aggTrade'], id: 1 })),
+    onMessage: (msg, update) => {
+      if (msg.e === 'aggTrade') update(parseFloat(msg.p));
+    },
+    restOpen: async () => {
+      const res = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=1');
+      const j = await res.json();
+      return parseFloat(j[0][1]); // [openTime, open, high, low, close, ...]
+    },
+  },
+  {
+    id: 'bybit', name: 'Bybit',
+    url: 'wss://stream.bybit.com/v5/public/linear',
+    onOpen: ws => ws.send(JSON.stringify({ op: 'subscribe', args: ['publicTrade.BTCUSDT'] })),
+    onMessage: (msg, update) => {
+      if (msg.topic === 'publicTrade.BTCUSDT' && Array.isArray(msg.data)) {
+        update(parseFloat(msg.data[msg.data.length - 1].p));
+      }
+    },
+    ping: ws => ws.send(JSON.stringify({ op: 'ping' })),
+    restOpen: async () => {
+      const res = await fetch('https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=5&limit=1');
+      const j = await res.json();
+      return parseFloat(j.result.list[0][1]); // [start, open, high, low, close, volume, turnover]
+    },
+  },
+  {
+    id: 'coinbase', name: 'Coinbase',
+    url: 'wss://advanced-trade-ws.coinbase.com',
+    onOpen: ws => ws.send(JSON.stringify({ type: 'subscribe', channel: 'ticker', product_ids: ['BTC-USD'] })),
+    onMessage: (msg, update) => {
+      if (msg.channel === 'ticker' && Array.isArray(msg.events)) {
+        msg.events.forEach(ev => (ev.tickers || []).forEach(t => update(parseFloat(t.price))));
+      }
+    },
+    restOpen: async () => {
+      const res = await fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=300&limit=1');
+      const j = await res.json();
+      return parseFloat(j[0][3]); // [time, low, high, open, close, volume]
+    },
+  },
+  {
     id: 'hyperliquid', name: 'Hyperliquid',
     url: 'wss://api-ui.hyperliquid.xyz/ws',
     onOpen: ws => ws.send(JSON.stringify({ method: 'subscribe', subscription: { type: 'activeAssetCtx', coin: 'BTC' } })),
@@ -252,7 +378,6 @@ const sources = [
       }
     },
     ping: ws => ws.send(JSON.stringify({ method: 'ping' })),
-    // open price of the current 5-min candle (clock-aligned)
     restOpen: async windowStart => {
       const res = await fetch('https://api.hyperliquid.xyz/info', {
         method: 'POST',
@@ -279,62 +404,17 @@ const sources = [
     },
   },
   {
-    id: 'coinbase', name: 'Coinbase',
-    url: 'wss://advanced-trade-ws.coinbase.com',
-    onOpen: ws => ws.send(JSON.stringify({ type: 'subscribe', channel: 'ticker', product_ids: ['BTC-USD'] })),
+    id: 'polymarket', name: 'Polymarket',
+    url: 'wss://ws-live-data.polymarket.com/',
+    onOpen: ws => ws.send(JSON.stringify({ action: 'subscribe', subscriptions: [{ topic: 'crypto_prices_chainlink', type: 'update', filters: '{"symbol":"btc/usd"}' }] })),
     onMessage: (msg, update) => {
-      if (msg.channel === 'ticker' && Array.isArray(msg.events)) {
-        msg.events.forEach(ev => (ev.tickers || []).forEach(t => update(parseFloat(t.price))));
+      if (msg.topic === 'crypto_prices_chainlink' && msg.type === 'update' && msg.payload) {
+        update(parseFloat(msg.payload.value));
+      } else if (msg.payload && Array.isArray(msg.payload.data)) {
+        // initial backlog of recent prices: use the one nearest the current window start as the open price
+        const hist = msg.payload.data.filter(p => p.timestamp <= windowStart);
+        if (hist.length) state.polymarket.baseline = hist[hist.length - 1].value;
       }
-    },
-    restOpen: async () => {
-      const res = await fetch('https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=300&limit=1');
-      const j = await res.json();
-      return parseFloat(j[0][3]); // [time, low, high, open, close, volume]
-    },
-  },
-  {
-    id: 'binance', name: 'Binance Spot',
-    url: 'wss://data-stream.binance.vision:9443/ws',
-    onOpen: ws => ws.send(JSON.stringify({ method: 'SUBSCRIBE', params: ['btcusdt@aggTrade'], id: 1 })),
-    onMessage: (msg, update) => {
-      if (msg.e === 'aggTrade') update(parseFloat(msg.p));
-    },
-    restOpen: async () => {
-      const res = await fetch('https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=1');
-      const j = await res.json();
-      return parseFloat(j[0][1]); // [openTime, open, high, low, close, ...]
-    },
-  },
-  {
-    id: 'binance-futures', name: 'Binance Futures',
-    url: 'wss://fstream.binance.com/market/stream',
-    onOpen: ws => ws.send(JSON.stringify({ method: 'SUBSCRIBE', params: ['btcusdt@markPrice'], id: 1 })),
-    onMessage: (msg, update) => {
-      if (msg.stream === 'btcusdt@markPrice' && msg.data) {
-        update(parseFloat(msg.data.p));
-      }
-    },
-    restOpen: async () => {
-      const res = await fetch('https://fapi.binance.com/fapi/v1/klines?symbol=BTCUSDT&interval=5m&limit=1');
-      const j = await res.json();
-      return parseFloat(j[0][1]); // [openTime, open, high, low, close, ...]
-    },
-  },
-  {
-    id: 'bybit', name: 'Bybit',
-    url: 'wss://stream.bybit.com/v5/public/linear',
-    onOpen: ws => ws.send(JSON.stringify({ op: 'subscribe', args: ['publicTrade.BTCUSDT'] })),
-    onMessage: (msg, update) => {
-      if (msg.topic === 'publicTrade.BTCUSDT' && Array.isArray(msg.data)) {
-        update(parseFloat(msg.data[msg.data.length - 1].p));
-      }
-    },
-    ping: ws => ws.send(JSON.stringify({ op: 'ping' })),
-    restOpen: async () => {
-      const res = await fetch('https://api.bybit.com/v5/market/kline?category=linear&symbol=BTCUSDT&interval=5&limit=1');
-      const j = await res.json();
-      return parseFloat(j.result.list[0][1]); // [start, open, high, low, close, volume, turnover]
     },
   },
 ];
@@ -351,6 +431,7 @@ const aggDirEl   = document.getElementById('aggDir');
 const aggSubEl   = document.getElementById('aggSub');
 const countdownEl= document.getElementById('countdown');
 const avgUsdEl   = document.getElementById('avgUsd');
+const avgDiffEl  = document.getElementById('avgDiff');
 const avgPhpEl   = document.getElementById('avgPhp');
 
 // ── USD/PHP exchange rate ────────────────────────────
@@ -378,7 +459,7 @@ sources.forEach(s => {
   const row = document.createElement('div');
   row.className = 'source-row';
   row.innerHTML = `
-    <div class="src-name"><span class="src-dot" id="dot-${s.id}"></span>${s.name}</div>
+    <div class="src-name"><span class="src-dot" id="dot-${s.id}"></span><span class="src-name-text">${s.name}</span></div>
     <div class="src-price skel" id="price-${s.id}">––––</div>
     <div class="src-diff flat" id="diff-${s.id}">·</div>
     <div class="src-dir flat" id="dir-${s.id}">·</div>
@@ -478,9 +559,23 @@ function render() {
     const avg = prices.reduce((a, b) => a + b, 0) / prices.length;
     avgUsdEl.classList.remove('skel');
     avgUsdEl.textContent = '$' + fmt(avg);
+    document.title = '$' + fmt(avg) + ' · BTC/5M';
     if (usdPhpRate !== null) {
       avgPhpEl.classList.remove('skel');
       avgPhpEl.textContent = '₱' + fmt(avg * usdPhpRate);
+    }
+
+    // average diff vs. average baseline (5-min window open)
+    const baselines = sources.map(s => state[s.id].baseline).filter(b => b !== null);
+    if (baselines.length) {
+      const avgBaseline = baselines.reduce((a, b) => a + b, 0) / baselines.length;
+      const avgDiff = avg - avgBaseline;
+      let avgDir = 'flat';
+      if (avgDiff > 0) avgDir = 'up';
+      else if (avgDiff < 0) avgDir = 'down';
+      const sign = avgDiff > 0 ? '+' : avgDiff < 0 ? '−' : '';
+      avgDiffEl.className = 'avg-diff ' + avgDir;
+      avgDiffEl.textContent = sign + '$' + fmt(Math.abs(avgDiff));
     }
   }
 
@@ -507,6 +602,13 @@ function render() {
 
 setInterval(render, 1000);
 render();
+
+// ── service worker ───────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
 </script>
 </body>
 </html>

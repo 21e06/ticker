@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BTC/5M — Generate PNG Icons</title>
+  <style>
+    body { font-family: system-ui, sans-serif; background: #1a1a1a; color: #e8e8e8; padding: 32px; }
+    h1   { color: #f7931a; margin-bottom: 8px; }
+    p    { color: #aaa; margin-bottom: 24px; }
+    .row { display: flex; gap: 32px; align-items: flex-start; flex-wrap: wrap; }
+    .card { background: #222; border: 1px solid #333; border-radius: 12px; padding: 20px; text-align: center; }
+    .card canvas { display: block; border-radius: 8px; }
+    .label { font-size: 12px; color: #888; margin-top: 10px; letter-spacing: 0.1em; }
+    button { margin-top: 12px; background: #f7931a; color: #0a0a0a; border: none; padding: 8px 18px;
+             border-radius: 6px; font-weight: 700; font-size: 13px; cursor: pointer; }
+    button:hover { background: #e8851a; }
+    .note { margin-top: 24px; font-size: 12px; color: #555; border-top: 1px solid #2a2a2a; padding-top: 16px; }
+    code { background: #2a2a2a; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+  </style>
+</head>
+<body>
+  <h1>BTC/5M Icon Generator</h1>
+  <p>Click each button to download the PNG icon and save it into the <code>icons/</code> folder.</p>
+  <div class="row" id="row"></div>
+  <p class="note">
+    These PNGs are referenced in <code>manifest.json</code> for full Android PWA install support.<br>
+    The SVG icons (<code>icons/icon.svg</code>, <code>icons/icon-maskable.svg</code>) already cover
+    Chrome, Firefox, and Edge with no PNGs needed.
+  </p>
+
+<script>
+function drawIcon(canvas, size, maskable) {
+  const ctx = canvas.getContext('2d');
+  const s = size / 512;
+
+  // Background
+  ctx.fillStyle = maskable ? '#111111' : '#0a0a0a';
+  ctx.fillRect(0, 0, size, size);
+
+  // Radial glow
+  const cx = size / 2, cy = (maskable ? 0.46 : 0.44) * size;
+  const r  = (maskable ? 0.40 : 0.46) * size;
+  const g  = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+  g.addColorStop(0, 'rgba(247,147,26,0.22)');
+  g.addColorStop(1, 'rgba(247,147,26,0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
+
+  // ₿ symbol
+  const symbolSize = Math.round((maskable ? 228 : 296) * s);
+  const symbolY    = Math.round((maskable ? 316 : 334) * s);
+  ctx.fillStyle = '#f7931a';
+  ctx.font = `900 ${symbolSize}px system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillText('₿', size / 2, symbolY);
+
+  // 5M label
+  const labelSize = Math.round((maskable ? 52 : 66) * s);
+  const labelY    = Math.round((maskable ? 400 : 440) * s);
+  ctx.fillStyle = maskable ? '#444' : '#3a3a3a';
+  ctx.font = `400 ${labelSize}px "Courier New",Courier,monospace`;
+  ctx.textAlign = 'center';
+  ctx.fillText('5M', size / 2 + Math.round(7 * s), labelY);
+}
+
+function addCard(size, maskable, filename) {
+  const card = document.createElement('div');
+  card.className = 'card';
+
+  const displaySize = Math.min(size, 256);
+  const canvas = document.createElement('canvas');
+  canvas.width  = size;
+  canvas.height = size;
+  canvas.style.width  = displaySize + 'px';
+  canvas.style.height = displaySize + 'px';
+  drawIcon(canvas, size, maskable);
+
+  const label = document.createElement('div');
+  label.className = 'label';
+  label.textContent = `${size}×${size}${maskable ? ' · maskable' : ''}`;
+
+  const btn = document.createElement('button');
+  btn.textContent = `Download ${filename}`;
+  btn.onclick = () => {
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = filename;
+    a.click();
+  };
+
+  card.append(canvas, label, btn);
+  document.getElementById('row').appendChild(card);
+}
+
+// Small delay to let fonts load
+setTimeout(() => {
+  addCard(192, false, 'icon-192.png');
+  addCard(512, false, 'icon-512.png');
+  addCard(512, true,  'icon-maskable.png');
+}, 200);
+</script>
+</body>
+</html>
